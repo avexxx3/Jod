@@ -1,0 +1,7 @@
+build/*
+build/
+.vscode/c_cpp_properties.json
+build-linux.sh
+build-win.bat
+.clangd
+.editorconfig
