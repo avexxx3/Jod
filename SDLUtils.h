@@ -1,5 +1,4 @@
 #pragma once
-#include "common.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
@@ -42,7 +41,7 @@ inline bool sdl_utils_Init(const char *title, SDL_Window **window,
     printf("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
     return 0;
   }
-  SDL_SetRenderDrawColor(*renderer, BG_R, BG_G, BG_B, 0xFF);
+  SDL_SetRenderDrawColor(*renderer, 0, 0, 0, 0xFF);
 
   int imgFlags = IMG_INIT_PNG | IMG_INIT_JPG;
   if (!(IMG_Init(imgFlags) & imgFlags)) {
@@ -55,7 +54,7 @@ inline bool sdl_utils_Init(const char *title, SDL_Window **window,
 
   TTF_Init();
 
-  *font = TTF_OpenFont("res/fonts/VictorMono-Regular.ttf", 24);
+  *font = TTF_OpenFont("res/fonts/VictorMono-Regular.ttf", 26);
 
   if (font == 0) {
     printf("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
