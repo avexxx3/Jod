@@ -61,6 +61,6 @@
     ".gitignore": true,
     "**/.clangd": true,
     "**/.docs": true,
-    "**/build-**": true
+    "build-win.bat": true
   }
 }
