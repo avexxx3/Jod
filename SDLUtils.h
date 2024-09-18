@@ -50,11 +50,11 @@ inline bool sdl_utils_Init(const char *title, SDL_Window **window,
     return 0;
   }
 
-  SDL_SetWindowFullscreen(*window, SDL_WINDOW_FULLSCREEN);
+  // SDL_SetWindowFullscreen(*window, SDL_WINDOW_FULLSCREEN);
 
   TTF_Init();
 
-  *font = TTF_OpenFont("res/fonts/VictorMono-Regular.ttf", 26);
+  *font = TTF_OpenFont("res/fonts/VictorMono-Regular.ttf", 48);
 
   if (font == 0) {
     printf("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());

@@ -6,6 +6,7 @@
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_opengl.h>
 #include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
@@ -24,6 +25,15 @@ int main() {
   bool ctrl = false;
 
   SDL_Rect blinker;
+
+  int trio = 0;
+
+  SDL_Rect newT;
+  newT.h = 10000;
+  newT.w = 10000;
+  newT.x = newT.y = 0;
+
+  double scale = 1;
 
   while (1) {
     SDL_RenderClear(renderer);
@@ -47,6 +57,14 @@ int main() {
       }
     }
 
+    SDL_RenderSetScale(renderer, linkedList.scale, linkedList.scale);
+    SDL_RenderSetViewport(renderer, &newT);
+
+    if (trio++ == 100) {
+      linkedList.sway();
+      trio = 0;
+    }
+
     SDL_RenderPresent(renderer);
 
     SDL_Event event;
@@ -58,6 +76,16 @@ int main() {
         return 1;
 
       case SDL_TEXTINPUT:
+        if (*event.text.text == '-' && ctrl) {
+          linkedList.scaleManually(false);
+          break;
+        }
+
+        if (*event.text.text == '=' && ctrl) {
+          linkedList.scaleManually(true);
+          break;
+        }
+
         linkedList.insert(*event.text.text);
         break;
 
@@ -76,11 +104,11 @@ int main() {
           break;
 
         case SDLK_LEFT:
-          linkedList.selectPrev();
+          ctrl ? linkedList.ctrlLeft() : linkedList.selectPrev();
           break;
 
         case SDLK_RIGHT:
-          linkedList.selectNext();
+          ctrl ? linkedList.ctrlRight() : linkedList.selectNext();
           break;
 
         case SDLK_BACKSPACE:
@@ -91,8 +119,24 @@ int main() {
           linkedList.tab();
           break;
 
+        case SDLK_UP:
+          linkedList.selectUp();
+          break;
+
+        case SDLK_DOWN:
+          linkedList.selectDown();
+          break;
+
         case SDLK_RSHIFT:
           linkedList.insert('\n');
+          break;
+
+        case SDLK_PLUS:
+          linkedList.scaleManually(true);
+          break;
+
+        case SDLK_MINUS:
+          linkedList.scaleManually(false);
           break;
         }
       }

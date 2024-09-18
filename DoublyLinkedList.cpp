@@ -4,6 +4,8 @@
 #include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
+#include <cstdlib>
+#include <iostream>
 
 namespace Color {
 SDL_Color White = {255, 255, 255};
@@ -42,6 +44,22 @@ struct Character {
   }
 };
 
+struct LinkedList {
+  struct Node {
+    Character *data;
+    Node *next;
+    Node *prev;
+
+  public:
+    Node(Character *val, Node *nptr = nullptr, Node *pptr = nullptr)
+        : data(val), next(nptr), prev(pptr) {}
+
+    ~Node() { delete data; }
+  };
+
+  Node *head, *selected;
+};
+
 struct CharacterLinkedList {
   struct Node {
     Character *data;
@@ -55,11 +73,19 @@ struct CharacterLinkedList {
     ~Node() { delete data; }
   };
 
-  Node *head, *tail, *selected;
+  Node *head, *selected;
 
   TTF_Font *font;
   SDL_Renderer *renderer;
   int windowWidth = 1000, windowHeight = 0;
+
+  int targetX = 10;
+  int targetY = 10;
+  bool posX = 0;
+  bool posY = 0;
+
+  double scale = 1.5;
+  double manualScale = 0;
 
 public:
   CharacterLinkedList(TTF_Font *font, SDL_Renderer *renderer,
@@ -67,8 +93,39 @@ public:
       : font(font), renderer(renderer) {
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
-    head = tail = selected =
-        new Node(new Character(10, 10, '\n', font, renderer));
+    head = selected = new Node(new Character(10, 10, '\n', font, renderer));
+  }
+
+  void sway() {
+    return;
+
+    SDL_Rect *rect = head->data->rect;
+    if (rect->y == targetY && rect->y == targetY) {
+      struct timespec ts;
+      clock_gettime(CLOCK_MONOTONIC, &ts);
+      srand((time_t)ts.tv_nsec);
+      targetX = (rand() % 6 * ((rand() % 2) ? -1 : 1));
+      targetY = (rand() % 6 * ((rand() % 2) ? -1 : 1));
+
+      posX = targetX > rect->x;
+      posY = targetY > rect->y;
+      return;
+    }
+
+    if (rect->x != targetX)
+      if (posX) {
+        rect->x++;
+      } else {
+        rect->x--;
+      }
+
+    if (rect->y != targetY)
+      if (posY) {
+        rect->y++;
+      } else {
+        rect->y--;
+      }
+    updatePosition(head);
   }
 
   void selectNext() {
@@ -79,6 +136,75 @@ public:
   void selectPrev() {
     if (selected->prev)
       selected = selected->prev;
+  }
+
+  void selectUp() {
+    Node *ptr = selected;
+
+    while (ptr && ptr->data->cStr[0] != '\n')
+      ptr = ptr->prev;
+
+    if (ptr == head) {
+      selected = head;
+      return;
+    }
+
+    // if (ptr->data->rect->x == selected->data->rect->x) {
+    //   if (selected->data->rect->w != 0)
+    //     selected = ptr->next;
+    //   else
+    //     selected = ptr;
+    //   return;
+    // }
+
+    ptr = ptr->prev;
+
+    while (ptr->data->cStr[0] != '\n' &&
+           ptr->prev->data->rect->x + ptr->data->rect->w >
+               selected->data->rect->x + selected->data->rect->w) {
+      ptr = ptr->prev;
+    }
+
+    if (ptr->data->cStr[0] == '\n')
+      selected = ptr;
+    else
+      selected = ptr->prev;
+  }
+
+  void selectDown() {
+    Node *ptr = selected;
+
+    if (!ptr->next)
+      return;
+
+    if (selected->data->cStr[0] == '\n')
+      ptr = ptr->next;
+
+    while (ptr && ptr->data->cStr[0] != '\n') {
+      if (!ptr->next) {
+        selected = ptr;
+        return;
+      }
+
+      ptr = ptr->next;
+    }
+
+    if (ptr->data->rect->x == selected->data->rect->x) {
+      if (selected->data->rect->w != 0)
+        selected = ptr->next;
+      else
+        selected = ptr;
+      return;
+    }
+
+    ptr = ptr->next;
+
+    while (ptr && ptr->data->cStr[0] != '\n' &&
+           ptr->data->rect->x < selected->data->rect->x) {
+      ptr = ptr->next;
+    }
+
+    selected = ptr;
   }
 
   void tab() {
@@ -94,8 +220,8 @@ public:
     int newX = (selected == head) ? 10 : rect->x + rect->w;
     int newY = rect->y;
 
-    if (newX >= windowWidth - rect->w || val == '\n') {
-      newX = 10;
+    if (val == '\n') {
+      newX = head->data->rect->x;
       newY += rect->h;
     }
 
@@ -111,7 +237,7 @@ public:
     }
 
     selected = newNode;
-    updatePosition(selected);
+    updatePosition(head);
   }
 
   void backspace() {
@@ -128,20 +254,18 @@ public:
 
     delete node;
 
-    updatePosition(selected);
+    updatePosition(head);
   }
 
   void ctrlBackspace() {
     Node *ptr = selected;
-    Node *ptrEnd = selected;
 
     if (!ptr->prev)
       return;
 
     int count = 0;
 
-    while (ptr->prev && (ptr->prev->data->cStr[0] == ' ' ||
-                         ptr->prev->data->cStr[0] == '\n')) {
+    while (ptr && (ptr->data->cStr[0] == ' ' || ptr->data->cStr[0] == '\n')) {
       ptr->prev->next = ptr->next;
 
       if (ptr->next)
@@ -175,52 +299,91 @@ public:
 
     selected = ptr;
 
-    updatePosition(selected);
+    updatePosition(head);
+  }
+
+  void ctrlRight() {
+    Node *ptr = selected;
+
+    if (!ptr->next)
+      return;
+
+    int count = 0;
+    while (ptr->next && (ptr->next->data->cStr[0] == ' ' ||
+                         ptr->next->data->cStr[0] == '\n')) {
+      count++;
+      ptr = ptr->next;
+    }
+
+    if (count <= 1)
+      while (ptr->next && (ptr->next->data->cStr[0] != ' ' &&
+                           ptr->next->data->cStr[0] != '\n')) {
+        ptr = ptr->next;
+      }
+
+    selected = ptr;
+  }
+
+  void ctrlLeft() {
+    Node *ptr = selected;
+
+    if (!ptr->prev)
+      return;
+
+    int count = 0;
+    while (ptr && (ptr->data->cStr[0] == ' ' || ptr->data->cStr[0] == '\n')) {
+      count++;
+      ptr = ptr->prev;
+    }
+
+    if (count <= 1) {
+      while (ptr->prev &&
+             (ptr->data->cStr[0] != ' ' && ptr->data->cStr[0] != '\n')) {
+        ptr = ptr->prev;
+      }
+    }
+
+    selected = ptr;
   }
 
   void updatePosition(Node *startPtr) {
     if (!startPtr || !startPtr->next)
       return;
 
-    if (!startPtr->prev) {
-    }
+    int maxWidth = -1;
 
     for (Node *ptr = startPtr; ptr; ptr = ptr->next) {
-
       SDL_Rect *rect;
 
       if (ptr->prev) {
         rect = ptr->prev->data->rect;
       } else {
-        rect = new SDL_Rect;
-        rect->h = startPtr->next->data->rect->h;
-        rect->w = startPtr->next->data->rect->w;
-        rect->x = 10 - rect->w;
-        rect->y = 10;
+        continue;
       }
 
       int newX = rect->x + rect->w;
       int newY = rect->y;
 
-      if (ptr->prev &&
-          (newX >= windowWidth - rect->w || ptr->data->cStr[0] == '\n')) {
+      if (newX > maxWidth && ptr->data->cStr[0] != '\n')
+        maxWidth = rect->x;
 
-        while (ptr->prev && ptr->prev->data->cStr[0] != ' ') {
-          ptr = ptr->prev;
-        }
-
-        newX = 10;
-        newY += rect->y;
-
-        if (ptr->prev) {
-          ptr->data->updatePosition(newX, newY, renderer);
-          updatePosition(ptr);
-          return;
-        }
+      if (ptr->prev && (ptr->data->cStr[0] == '\n')) {
+        newX = head->data->rect->x;
+        newY += rect->h;
       }
 
       ptr->data->updatePosition(newX, newY, renderer);
     }
+
+    scale = (1260.0 / maxWidth) + manualScale;
+
+    if (scale > 1.5)
+      scale = 1.5;
+  }
+
+  void scaleManually(const bool increase) {
+    manualScale = increase ? manualScale + 0.01 : manualScale - 0.01;
+    updatePosition(head);
   }
 
   ~CharacterLinkedList() {
