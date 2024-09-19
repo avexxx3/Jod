@@ -1,4 +1,5 @@
 #pragma once
+#include "SDLUtils.h"
 #include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_surface.h>
@@ -85,6 +86,7 @@ struct CharacterLinkedList {
   bool posY = 0;
 
   double scale = 1.5;
+  double targetScale;
   double manualScale = 0;
 
 public:
@@ -97,10 +99,8 @@ public:
   }
 
   void sway() {
-    return;
-
     SDL_Rect *rect = head->data->rect;
-    if (rect->y == targetY && rect->y == targetY) {
+    if (rect->y == targetY && rect->x == targetX) {
       struct timespec ts;
       clock_gettime(CLOCK_MONOTONIC, &ts);
       srand((time_t)ts.tv_nsec);
@@ -128,6 +128,12 @@ public:
     updatePosition(head);
   }
 
+  void reset() {
+    SDL_Rect *rect = head->data->rect;
+    rect->x = rect->y = targetY = targetX = 10;
+    updatePosition(head);
+  }
+
   void selectNext() {
     if (selected->next)
       selected = selected->next;
@@ -146,16 +152,9 @@ public:
 
     if (ptr == head) {
       selected = head;
+      setScale();
       return;
     }
-
-    // if (ptr->data->rect->x == selected->data->rect->x) {
-    //   if (selected->data->rect->w != 0)
-    //     selected = ptr->next;
-    //   else
-    //     selected = ptr;
-    //   return;
-    // }
 
     ptr = ptr->prev;
 
@@ -169,6 +168,20 @@ public:
       selected = ptr;
     else
       selected = ptr->prev;
+
+    if ((selected->data->rect->h + selected->data->rect->y) * targetScale <
+        (head->data->rect->y * -1)) {
+      head->data->rect->y += head->data->rect->h;
+      updatePosition(head);
+    }
+
+    setScale();
+
+    if ((selected->data->rect->h + selected->data->rect->y) * targetScale <
+        (head->data->rect->y * -1)) {
+      head->data->rect->y += head->data->rect->h;
+      updatePosition(head);
+    }
   }
 
   void selectDown() {
@@ -183,10 +196,17 @@ public:
     while (ptr && ptr->data->cStr[0] != '\n') {
       if (!ptr->next) {
         selected = ptr;
+        setScale();
         return;
       }
 
       ptr = ptr->next;
+    }
+
+    if (!ptr->next) {
+      selected = ptr;
+      setScale();
+      return;
     }
 
     if (ptr->data->rect->x == selected->data->rect->x) {
@@ -194,17 +214,24 @@ public:
         selected = ptr->next;
       else
         selected = ptr;
+      setScale();
       return;
     }
 
-    ptr = ptr->next;
-
-    while (ptr && ptr->data->cStr[0] != '\n' &&
+    while (ptr->next && ptr->next->data->cStr[0] != '\n' &&
            ptr->data->rect->x < selected->data->rect->x) {
       ptr = ptr->next;
     }
 
     selected = ptr;
+
+    setScale();
+
+    if ((selected->data->rect->h + selected->data->rect->y) * targetScale >
+        windowHeight) {
+      head->data->rect->y += head->data->rect->h;
+      updatePosition(head);
+    }
   }
 
   void tab() {
@@ -223,6 +250,9 @@ public:
     if (val == '\n') {
       newX = head->data->rect->x;
       newY += rect->h;
+
+      if (rect->h + newY * scale > windowHeight)
+        head->data->rect->y -= head->data->rect->h;
     }
 
     Character *newCharacter = new Character(newX, newY, val, font, renderer);
@@ -254,6 +284,10 @@ public:
 
     delete node;
 
+    if ((selected->data->rect->h + selected->data->rect->y) * targetScale <
+        (head->data->rect->y * -1)) {
+      head->data->rect->y += head->data->rect->h;
+    }
     updatePosition(head);
   }
 
@@ -346,9 +380,19 @@ public:
     selected = ptr;
   }
 
+  bool selectedBelowScreen() {
+    return selected->data->rect->y + selected->data->rect->h > windowHeight;
+  }
+
+  bool selectedAboveScreen() {
+    return selected->data->rect->y + selected->data->rect->h < 0;
+  }
+
   void updatePosition(Node *startPtr) {
-    if (!startPtr || !startPtr->next)
+    if (!startPtr || !startPtr->next) {
+      setScale();
       return;
+    }
 
     int maxWidth = -1;
 
@@ -375,10 +419,52 @@ public:
       ptr->data->updatePosition(newX, newY, renderer);
     }
 
-    scale = (1260.0 / maxWidth) + manualScale;
+    setScale();
 
-    if (scale > 1.5)
-      scale = 1.5;
+    if ((selected->data->rect->h + selected->data->rect->y) * targetScale >
+        windowHeight) {
+      head->data->rect->y -= head->data->rect->h;
+      updatePosition(head);
+    }
+  }
+
+  bool pos;
+
+  void setScale() {
+    Node *ptr = selected;
+
+    while (ptr->next && ptr->next->data->cStr[0] != '\n')
+      ptr = ptr->next;
+
+    if (ptr->data->rect->x >= 0)
+      targetScale =
+          (1260.0 / (ptr->data->rect->x + (10 - targetX))) + manualScale;
+
+    if (targetScale > 1.5)
+      targetScale = 1.5;
+
+    pos = targetScale > scale;
+  }
+
+  void scaleScale() {
+    if (targetScale == scale)
+      return;
+
+    std::cout << "targetScale: " << targetScale << "; actualScale: " << scale
+              << "; POS: " << pos << '\n';
+
+    if (pos)
+      if (targetScale > scale)
+        scale += 0.001;
+      else
+        scale = targetScale;
+    else {
+      if (targetScale < scale) {
+        scale -= 0.001;
+      } else {
+        scale = targetScale;
+      }
+    }
   }
 
   void scaleManually(const bool increase) {

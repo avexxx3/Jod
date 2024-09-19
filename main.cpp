@@ -10,9 +10,11 @@
 #include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
+#include <SDL2/SDL_rwops.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
+#include <cstdlib>
 SDL_Window *window;
 SDL_Renderer *renderer;
 TTF_Font *font;
@@ -26,16 +28,20 @@ int main() {
 
   SDL_Rect blinker;
 
-  int trio = 0;
-
   SDL_Rect newT;
   newT.h = 10000;
   newT.w = 10000;
-  newT.x = newT.y = 0;
+  newT.x = newT.y = 10;
+  newT.y = 10;
 
-  double scale = 1;
+  linkedList.setScale();
+
+  bool capsLock = SDL_GetModState() & KMOD_CAPS;
 
   while (1) {
+    if (capsLock)
+      linkedList.sway();
+    linkedList.scaleScale();
     SDL_RenderClear(renderer);
 
     for (CharacterLinkedList::Node *ptr = linkedList.head; ptr != nullptr;
@@ -59,12 +65,6 @@ int main() {
 
     SDL_RenderSetScale(renderer, linkedList.scale, linkedList.scale);
     SDL_RenderSetViewport(renderer, &newT);
-
-    if (trio++ == 100) {
-      linkedList.sway();
-      trio = 0;
-    }
-
     SDL_RenderPresent(renderer);
 
     SDL_Event event;
@@ -98,7 +98,14 @@ int main() {
         break;
 
       case SDL_KEYDOWN:
+        std::cout << event.key.keysym.scancode << '\n';
+        linkedList.setScale();
+
+        if (event.key.keysym.scancode == 40)
+          linkedList.insert('\n');
+
         switch (event.key.keysym.sym) {
+
         case SDLK_LCTRL:
           ctrl = true;
           break;
@@ -127,16 +134,20 @@ int main() {
           linkedList.selectDown();
           break;
 
-        case SDLK_RSHIFT:
-          linkedList.insert('\n');
-          break;
-
         case SDLK_PLUS:
           linkedList.scaleManually(true);
           break;
 
         case SDLK_MINUS:
           linkedList.scaleManually(false);
+          break;
+
+        case SDLK_CAPSLOCK:
+          capsLock = SDL_GetModState() & KMOD_CAPS;
+
+          if (!capsLock)
+            linkedList.reset();
+
           break;
         }
       }

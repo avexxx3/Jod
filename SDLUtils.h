@@ -2,6 +2,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
+#include <fstream>
 #include <stdio.h>
 
 inline bool sdl_utils_Init(const char *title, SDL_Window **window,
@@ -50,7 +51,7 @@ inline bool sdl_utils_Init(const char *title, SDL_Window **window,
     return 0;
   }
 
-  // SDL_SetWindowFullscreen(*window, SDL_WINDOW_FULLSCREEN);
+  SDL_SetWindowFullscreen(*window, SDL_WINDOW_FULLSCREEN);
 
   TTF_Init();
 
