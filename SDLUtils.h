@@ -6,20 +6,17 @@
 #include <stdio.h>
 
 inline bool sdl_utils_Init(const char *title, SDL_Window **window,
-                           SDL_Renderer **renderer, TTF_Font **font,
-                           bool textureFiltering) {
+                           SDL_Renderer **renderer, TTF_Font **font) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
     return 0;
   }
 
   SDL_Init(SDL_INIT_TIMER);
-  printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+  SDL_Init(SDL_INIT_AUDIO);
 
-  if (textureFiltering) {
-    if (!SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1")) {
-      printf("Warning: Linear texture filtering not enabled!");
-    }
+  if (!SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1")) {
+    printf("Warning: Linear texture filtering not enabled!");
   }
 
   SDL_DisplayMode DisplayMode;
@@ -55,7 +52,7 @@ inline bool sdl_utils_Init(const char *title, SDL_Window **window,
 
   TTF_Init();
 
-  *font = TTF_OpenFont("res/fonts/VictorMono-Regular.ttf", 48);
+  *font = TTF_OpenFont("VictorMono-Regular.ttf", 48);
 
   if (font == 0) {
     printf("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
