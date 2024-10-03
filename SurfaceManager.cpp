@@ -15,6 +15,11 @@ class SurfaceManager {
   }
 
 public:
+  ~SurfaceManager() {
+    for (auto it = surfaceMap.begin(); it != surfaceMap.end(); it++)
+      SDL_FreeSurface(it->second);
+  }
+
   SurfaceManager() {
     TTF_Init();
     font = TTF_OpenFont("res/VictorMono-Regular.ttf", 48);
